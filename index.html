@@ -45,6 +45,29 @@
         --accent-ink: #0d1512;
         --track: rgba(233, 240, 234, .22);
       }
+      ::-webkit-scrollbar,
+      .dev-cats::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track,
+      .dev-cats::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, .07);
+        border-radius: 999px;
+      }
+
+      ::-webkit-scrollbar-thumb,
+      .dev-cats::-webkit-scrollbar-thumb {
+        background: rgba(108, 242, 194, .55);
+        border: 2px solid rgba(13, 21, 17, .9);
+        border-radius: 999px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover,
+      .dev-cats::-webkit-scrollbar-thumb:hover {
+        background: var(--rx-acc);
+      }
 
       html {
         scroll-padding-top: env(safe-area-inset-top, 0px);
