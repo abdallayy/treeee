@@ -29,7 +29,7 @@
     skyUniforms.uSunColor.value.copy( pal.sunLow ).lerp( pal.sunHigh, smoothstep( 0.02, 0.5, e ) );
 
     scene.fog.color.copy( hor );
-    scene.fog.density = 0.0013 + W.rain * 0.0045 + W.mist * 0.017 + W.oc * 0.001;
+    scene.fog.density = ( 0.0013 + W.rain * 0.0045 + W.mist * 0.017 + W.oc * 0.001 ) * Q.fogMul;      // Low: denser fog = shorter visible distance
 
     const sunI = 3.0 * smoothstep( -0.04, 0.3, e ) * ( 1 - 0.8 * W.oc ), moonI = 0.5 * ( 1 - smoothstep( -0.3, -0.04, e ) ) * ( 1 - 0.5 * W.oc );
     if ( e > -0.05 ) { lightDir.copy( sunDir ); sun.intensity = sunI; sun.color.copy( skyUniforms.uSunColor.value ); }

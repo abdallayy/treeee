@@ -41,6 +41,7 @@
   } )();
 
   /* ---- Stones: clustered at tree bases + scattered on the meadow ---------- */
+  const stoneChunks = [];
   ( function stones ()
   {
     const rnd = mulberry32( 777 );
@@ -57,17 +58,28 @@
       add( x, z, 0.15 + Math.pow( rnd(), 2 ) * 0.55 );
     }
     for ( let i = 0; i < 1100; i++ ) { const x = ( rnd() - 0.5 ) * MAP * 0.98, z = ( rnd() - 0.5 ) * MAP * 0.98; if ( riverDist( x, z ) < 9 ) continue; add( x, z, 0.1 + Math.pow( rnd(), 3 ) * 0.9 ); }
-    const im = new T.InstancedMesh( new T.DodecahedronGeometry( 1, 0 ), new T.MeshStandardMaterial( { roughness: 0.92, flatShading: true } ), mats.length );
-    const c = new T.Color();
+    // One shared geometry + material, split into 160 m chunks. A single InstancedMesh gets frustum-culled by ONE bounding sphere at the
+    // origin (three r128), so it would blink out whenever the map centre is off-screen; chunks are culled properly instead (updateMeadow).
+    const geo = new T.DodecahedronGeometry( 1, 0 ), mat = new T.MeshStandardMaterial( { roughness: 0.92, flatShading: true } );
+    const SC = 160, buckets = new Map(), cols = mats.map( () =>      // colours drawn in the original order -> identical look
+    {
+      const c = new T.Color(); c.copy( C( '#8b8880' ) ).multiplyScalar( 0.65 + rnd() * 0.55 );
+      if ( rnd() < 0.3 ) c.lerp( C( '#5d7a43' ), 0.35 );          // mossy
+      return c;
+    } );
     mats.forEach( ( o, i ) =>
     {
-      im.setMatrixAt( i, o.m );
-      c.copy( C( '#8b8880' ) ).multiplyScalar( 0.65 + rnd() * 0.55 );
-      if ( rnd() < 0.3 ) c.lerp( C( '#5d7a43' ), 0.35 );          // mossy
-      im.setColorAt( i, c );
+      const cx = Math.floor( ( o.m.elements[ 12 ] + HALF ) / SC ), cz = Math.floor( ( o.m.elements[ 14 ] + HALF ) / SC ), k = cx + ',' + cz;
+      let b = buckets.get( k ); if ( !b ) buckets.set( k, b = { cx, cz, items: [] } ); b.items.push( i );
     } );
-    im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
-    im.castShadow = true; im.receiveShadow = true; scene.add( im );
+    buckets.forEach( b =>
+    {
+      const im = new T.InstancedMesh( geo, mat, b.items.length );
+      b.items.forEach( ( i, j ) => { im.setMatrixAt( j, mats[ i ].m ); im.setColorAt( j, cols[ i ] ); } );
+      im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
+      im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; scene.add( im );
+      stoneChunks.push( { im, x: -HALF + ( b.cx + 0.5 ) * SC, z: -HALF + ( b.cz + 0.5 ) * SC, r: SC * 0.71 + 60 } );
+    } );
   } )();
 
 

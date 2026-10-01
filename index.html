@@ -478,6 +478,40 @@
           bottom: calc(40px + env(safe-area-inset-bottom, 0px));
         }
       }
+
+      /* ---- touch / mobile ---- */
+      html,
+      body {
+        touch-action: manipulation;          /* no double-tap zoom, no 300 ms click delay */
+        overscroll-behavior: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      #c { touch-action: none; }             /* the 3D view owns every gesture (OrbitControls drag / pinch) */
+      #panel { touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+      button, input, label, .seg button, #collapse, #studyToggle { touch-action: manipulation; }
+      input { -webkit-user-select: text; user-select: text; }
+      input[type=number] { font-size: 16px !important; }   /* iOS zooms the page when a field under 16px gets focus */
+      #qualBtn {
+        all: unset;
+        position: fixed;
+        right: max(12px, env(safe-area-inset-right, 0px));
+        bottom: calc(44px + env(safe-area-inset-bottom, 0px));
+        z-index: 10;
+        font-size: 12px;
+        color: #e6efe8;
+        background: rgba(10, 16, 13, .5);
+        padding: 6px 11px;
+        border-radius: 8px;
+        cursor: pointer;
+        touch-action: manipulation;
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+      }
+      #qualBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .seg.s2 { grid-template-columns: repeat(2, 1fr); }
     </style>
   </head>
 
@@ -530,6 +564,9 @@
           <label><input type="checkbox" id="cLabels" checked> Labels</label>
           <label><input type="checkbox" id="cShadow" checked> Shadows</label>
         </div>
+        <h2>Graphics quality</h2>
+        <div class="seg s2" id="qualSeg" role="group" aria-label="Graphics quality"><button data-q="low">Low</button><button data-q="mid" class="on">Mid</button></div>
+        <p class="hint">Mid: full quality (default). Low: lower resolution, smaller shadow map, shorter view distance and no depth-of-field, for weak or hot phones. Applies instantly.</p>
         <h2>Performance</h2>
         <div class="seg" id="fpsSeg" style="grid-template-columns:repeat(5,1fr)" role="group" aria-label="Frame rate limit"><button data-f="30">30</button><button data-f="60">60</button><button data-f="90">90</button><button data-f="120">120</button><button data-f="0">Max</button></div>
         <div class="row"><label for="fpsInput">Custom FPS</label><input id="fpsInput" type="number" min="10" max="500" step="1" value="60" inputmode="numeric" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);font:inherit"><output>fps</output></div>
@@ -542,6 +579,7 @@
       </div>
     </div>
     <div id="hud">– fps</div>
+    <button id="qualBtn" type="button" aria-label="Toggle graphics quality">Graphics: Mid</button>
     <div id="plant" role="region" aria-label="Study timer and tree planting">
       <div class="pl-top"><span id="plLabel">Study time toward next point</span><b id="plTime">00:00:00</b></div>
       <div class="pl-bar" role="progressbar" aria-label="Progress toward next planting point" aria-valuemin="0"

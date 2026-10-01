@@ -1226,12 +1226,36 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
   };
   const W = { oc: 0, rain: 0, mist: 0, dust: 1 };
   /* =====================================================================
+   *  8b. GRAPHICS QUALITY PRESETS  (Low / Mid)  -  switchable live, see ui/quality-ui.js
+   *
+   *  Mid  = the full-quality look (default): native devicePixelRatio, full shadow map, full draw distance, DoF, 4x MSAA.
+   *  Low  = performance: pixel ratio <= 1.25, 1024 shadow map over a smaller shadow window, slower shadow refresh,
+   *         denser fog + shorter camera / grass distance, no depth-of-field pass, 2x MSAA, adaptive resolution on.
+   *  Everything that reads a preset reads the live `Q` binding, so switching never needs a reload.
+   * ===================================================================== */
+  const isMobile = /Android|iPhone|iPad|Mobi/i.test( navigator.userAgent );
+  const MID_PR_CAP = Infinity;      // Mid = full window.devicePixelRatio. On very dense phones (3x+) you may set e.g. 2 here.
+  const QUALITY = {
+    mid: {
+      key: 'mid', label: 'Mid', pr: () => Math.min( window.devicePixelRatio || 1, MID_PR_CAP ),
+      shadowMap: isMobile ? 2048 : 4096, shadowHalf: 230, shadowMs: 30,      // same values the game always used
+      msaa: 4, dof: true, fogMul: 1, far: 6000, grassDist: 430, adaptive: false
+    },
+    low: {
+      key: 'low', label: 'Low', pr: () => Math.min( window.devicePixelRatio || 1, 1.25 ),
+      shadowMap: 1024, shadowHalf: 150, shadowMs: 66,
+      msaa: 2, dof: false, fogMul: 1.8, far: 2200, grassDist: 260, adaptive: true
+    }
+  };
+  let qualityKey = 'mid';
+  try { const s = localStorage.getItem( 'realmQuality' ); if ( QUALITY[ s ] ) qualityKey = s; } catch ( e ) {}
+  let Q = QUALITY[ qualityKey ];      // the live preset
+  /* =====================================================================
    *  9. RENDERER / SCENE / CAMERA / POST-PROCESSING
    * ===================================================================== */
   const canvas = document.getElementById( 'c' );
   const renderer = new T.WebGLRenderer( { canvas, antialias: false, stencil: false, powerPreference: 'high-performance' } );
-  const isMobile = /Android|iPhone|iPad|Mobi/i.test( navigator.userAgent );
-  const PR = Math.min( window.devicePixelRatio || 1, isMobile ? 1.5 : 2 );
+  let PR = Q.pr();      // max pixel ratio of the active quality preset (adaptive resolution may go lower, never higher)
   let curPR = PR;      // live pixel ratio (adaptive resolution may lower it temporarily, never above PR)
   renderer.setPixelRatio( PR );
   renderer.setSize( window.innerWidth, window.innerHeight, false );
@@ -1241,7 +1265,7 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
 
   const scene = new T.Scene();
   scene.fog = new T.FogExp2( 0xb9d6ee, 0.0013 );
-  const camera = new T.PerspectiveCamera( 38, window.innerWidth / window.innerHeight, 0.5, 6000 );
+  const camera = new T.PerspectiveCamera( 38, window.innerWidth / window.innerHeight, 0.5, Q.far );
   camera.position.set( 150, 125, 140 );
   const controls = new T.OrbitControls( camera, canvas );
   controls.target.set( 0, 4, -6 );
@@ -1255,7 +1279,7 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
   const isGL2 = renderer.capabilities.isWebGL2;
   const RTClass = isGL2 && T.WebGLMultisampleRenderTarget ? T.WebGLMultisampleRenderTarget : T.WebGLRenderTarget;
   const rt = new RTClass( window.innerWidth * PR, window.innerHeight * PR, { type: T.HalfFloatType, format: T.RGBAFormat, minFilter: T.LinearFilter, magFilter: T.LinearFilter } );
-  if ( isGL2 && 'samples' in rt ) rt.samples = 4;
+  if ( isGL2 && 'samples' in rt ) rt.samples = Q.msaa;
   const composer = new T.EffectComposer( renderer, rt );
   composer.setPixelRatio( PR );
   composer.setSize( window.innerWidth, window.innerHeight );
@@ -1319,8 +1343,8 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
   scene.add( hemi );
   const sun = new T.DirectionalLight( 0xfff0dd, 3 );
   sun.castShadow = true;
-  sun.shadow.mapSize.set( isMobile ? 2048 : 4096, isMobile ? 2048 : 4096 );
-  const SH = 230;
+  sun.shadow.mapSize.set( Q.shadowMap, Q.shadowMap );
+  const SH = Q.shadowHalf;
   Object.assign( sun.shadow.camera, { left: -SH, right: SH, top: SH, bottom: -SH, near: 10, far: 1400 } );
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.5; sun.shadow.radius = 2.5;
   const shadowCenter = new T.Vector3( 0, 0, -5 );
@@ -1631,6 +1655,7 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
   } )();
 
   /* ---- Stones: clustered at tree bases + scattered on the meadow ---------- */
+  const stoneChunks = [];
   ( function stones ()
   {
     const rnd = mulberry32( 777 );
@@ -1647,17 +1672,28 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
       add( x, z, 0.15 + Math.pow( rnd(), 2 ) * 0.55 );
     }
     for ( let i = 0; i < 1100; i++ ) { const x = ( rnd() - 0.5 ) * MAP * 0.98, z = ( rnd() - 0.5 ) * MAP * 0.98; if ( riverDist( x, z ) < 9 ) continue; add( x, z, 0.1 + Math.pow( rnd(), 3 ) * 0.9 ); }
-    const im = new T.InstancedMesh( new T.DodecahedronGeometry( 1, 0 ), new T.MeshStandardMaterial( { roughness: 0.92, flatShading: true } ), mats.length );
-    const c = new T.Color();
+    // One shared geometry + material, split into 160 m chunks. A single InstancedMesh gets frustum-culled by ONE bounding sphere at the
+    // origin (three r128), so it would blink out whenever the map centre is off-screen; chunks are culled properly instead (updateMeadow).
+    const geo = new T.DodecahedronGeometry( 1, 0 ), mat = new T.MeshStandardMaterial( { roughness: 0.92, flatShading: true } );
+    const SC = 160, buckets = new Map(), cols = mats.map( () =>      // colours drawn in the original order -> identical look
+    {
+      const c = new T.Color(); c.copy( C( '#8b8880' ) ).multiplyScalar( 0.65 + rnd() * 0.55 );
+      if ( rnd() < 0.3 ) c.lerp( C( '#5d7a43' ), 0.35 );          // mossy
+      return c;
+    } );
     mats.forEach( ( o, i ) =>
     {
-      im.setMatrixAt( i, o.m );
-      c.copy( C( '#8b8880' ) ).multiplyScalar( 0.65 + rnd() * 0.55 );
-      if ( rnd() < 0.3 ) c.lerp( C( '#5d7a43' ), 0.35 );          // mossy
-      im.setColorAt( i, c );
+      const cx = Math.floor( ( o.m.elements[ 12 ] + HALF ) / SC ), cz = Math.floor( ( o.m.elements[ 14 ] + HALF ) / SC ), k = cx + ',' + cz;
+      let b = buckets.get( k ); if ( !b ) buckets.set( k, b = { cx, cz, items: [] } ); b.items.push( i );
     } );
-    im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
-    im.castShadow = true; im.receiveShadow = true; scene.add( im );
+    buckets.forEach( b =>
+    {
+      const im = new T.InstancedMesh( geo, mat, b.items.length );
+      b.items.forEach( ( i, j ) => { im.setMatrixAt( j, mats[ i ].m ); im.setColorAt( j, cols[ i ] ); } );
+      im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
+      im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; scene.add( im );
+      stoneChunks.push( { im, x: -HALF + ( b.cx + 0.5 ) * SC, z: -HALF + ( b.cz + 0.5 ) * SC, r: SC * 0.71 + 60 } );
+    } );
   } )();
 
 
@@ -1918,9 +1954,14 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
     for ( const c of meadow )
     {
       const d = Math.hypot( c.x - cp.x, c.z - cp.z ); _sp.center.set( c.x, c.y + 15, c.z );
-      const vis = d < 430 && _fr.intersectsSphere( _sp ), f = d < 140 ? 1 : d < 280 ? 0.5 : 0.22;
+      const vis = d < Q.grassDist && _fr.intersectsSphere( _sp ), f = d < Q.grassDist * 0.33 ? 1 : d < Q.grassDist * 0.65 ? 0.5 : 0.22;
       c.gm.visible = vis && c.n > 0; c.fm.visible = vis && c.nf > 0;
       if ( vis ) { c.gm.count = Math.ceil( c.n * f ); c.fm.count = Math.ceil( c.nf * f ); }
+    }
+    for ( const s of stoneChunks )      // stones: same per-chunk frustum + distance culling
+    {
+      const d = Math.hypot( s.x - cp.x, s.z - cp.z ); _sp.center.set( s.x, 30, s.z ); _sp.radius = s.r;
+      s.im.visible = d - s.r < Q.grassDist * 1.8 && _fr.intersectsSphere( _sp ); _sp.radius = 110;
     }
   }
   /* ---- Low-poly clouds that drift with the wind ---------------------------- */
@@ -1988,7 +2029,7 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
     skyUniforms.uSunColor.value.copy( pal.sunLow ).lerp( pal.sunHigh, smoothstep( 0.02, 0.5, e ) );
 
     scene.fog.color.copy( hor );
-    scene.fog.density = 0.0013 + W.rain * 0.0045 + W.mist * 0.017 + W.oc * 0.001;
+    scene.fog.density = ( 0.0013 + W.rain * 0.0045 + W.mist * 0.017 + W.oc * 0.001 ) * Q.fogMul;      // Low: denser fog = shorter visible distance
 
     const sunI = 3.0 * smoothstep( -0.04, 0.3, e ) * ( 1 - 0.8 * W.oc ), moonI = 0.5 * ( 1 - smoothstep( -0.3, -0.04, e ) ) * ( 1 - 0.5 * W.oc );
     if ( e > -0.05 ) { lightDir.copy( sunDir ); sun.intensity = sunI; sun.color.copy( skyUniforms.uSunColor.value ); }
@@ -2085,10 +2126,11 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
     } );
   }
 
+  let _rszRaf = 0, _lastW = 0, _lastH = 0;
   function applyPR ( pr )      // (re)size canvas + post-processing for a pixel ratio
   {
     curPR = pr;
-    const w = window.innerWidth, h = window.innerHeight;
+    const w = window.innerWidth, h = window.innerHeight; _lastW = w; _lastH = h;
     renderer.setPixelRatio( pr );
     renderer.setSize( w, h, false );
     composer.setPixelRatio( pr );
@@ -2099,7 +2141,9 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
     pointSystems.forEach( s => { s.u.uScale.value = scale; } );
   }
   function resize () { applyPR( curPR ); }
-  window.addEventListener( 'resize', resize );
+  // phones fire many 'resize' events while the URL bar slides: coalesce to one per frame and skip when the size did not change
+  // (every applyPR reallocates the HDR render targets)
+  window.addEventListener( 'resize', () => { if ( _rszRaf ) return; _rszRaf = requestAnimationFrame( () => { _rszRaf = 0; if ( window.innerWidth !== _lastW || window.innerHeight !== _lastH ) applyPR( curPR ); } ); } );
   resize();
 
   // Depth pre-pass for the bokeh must ignore sky + particles (they'd pollute the depth buffer)
@@ -3131,7 +3175,7 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
   let fpsT = 0, fpsN = 0;
 
   /* ---- Performance: frame-rate target, adaptive resolution, throttled shadows ---- */
-  const perf = { fps: 60, adaptive: isMobile, lastT: 0, rafT: 0, minRaf: 1000 / 30, shadowT: 0, shadowKey: '', ft: 0, ftN: 0, okT: 0, lock: 0, scale: 1, cool: 0 };
+  const perf = { fps: 60, adaptive: Q.adaptive, lastT: 0, rafT: 0, minRaf: 1000 / 30, shadowT: 0, shadowKey: '', ft: 0, ftN: 0, okT: 0, lock: 0, scale: 1, cool: 0 };
   try { const sv = JSON.parse( localStorage.getItem( 'realmPerf' ) || '{}' ); if ( sv.fps >= 10 && sv.fps <= 500 ) perf.fps = sv.fps; if ( sv.fps === 0 ) perf.fps = 0; if ( typeof sv.adaptive === 'boolean' ) perf.adaptive = sv.adaptive; } catch ( e ) {}
   const RES_STEPS = [ 1, 0.88, 0.77, 0.67 ];      // adaptive resolution never goes below 67 % and only drops while the target FPS is being missed
   let resStep = 0;
@@ -3202,7 +3246,7 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
     // depth of field: autofocus on the orbit target. The pass re-renders the whole scene for depth, so it is skipped
     // while its biggest possible blur is under ~0.75 px of the render buffer (invisible) - raise the slider and it comes back.
     const maxBlurPx = 0.007 * state.dof * renderer.domElement.width;
-    bokeh.enabled = state.dof > 0.01 && ( DEV || maxBlurPx >= 0.75 );
+    bokeh.enabled = state.dof > 0.01 && ( DEV || ( Q.dof && maxBlurPx >= 0.75 ) );      // Low: the extra depth pass is never run
     if ( bokeh.enabled )
     {
       bokeh.uniforms[ 'focus' ].value = camera.position.distanceTo( controls.target );
@@ -3214,7 +3258,7 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
     if ( !DEV )
     {
       const key = shadowCenter.x + ',' + shadowCenter.z + ',' + state.hour.toFixed( 3 ) + ',' + state.shadows + ',' + state.weather;
-      if ( key !== perf.shadowKey || now0 - perf.shadowT >= 30 ) { perf.shadowKey = key; perf.shadowT = now0; renderer.shadowMap.needsUpdate = true; }
+      if ( key !== perf.shadowKey || now0 - perf.shadowT >= Q.shadowMs ) { perf.shadowKey = key; perf.shadowT = now0; renderer.shadowMap.needsUpdate = true; }
     }
 
     composer.render( dt );
@@ -3242,4 +3286,52 @@ window.DEV_MODE = document.body.dataset.devMode === 'true';
   // Reveal once the first frames are compiled
   frame();
   setTimeout( () => $( 'loading' ).classList.add( 'done' ), 500 );
+  /* =====================================================================
+   *  13. QUALITY SWITCH (Low / Mid) - applied live to renderer, composer, shadows, camera; no reload
+   * ===================================================================== */
+  function syncQualityUI ()
+  {
+    const seg = $( 'qualSeg' ); if ( seg && seg.children ) [ ...seg.children ].forEach( b => b.classList.toggle( 'on', b.dataset.q === Q.key ) );
+    const btn = $( 'qualBtn' ); if ( btn ) btn.textContent = 'Graphics: ' + Q.label;
+    document.body.classList.toggle( 'q-low', Q.key === 'low' );
+  }
+  function applyQuality ( key )
+  {
+    if ( !QUALITY[ key ] ) return;
+    qualityKey = key; Q = QUALITY[ key ];
+    try { localStorage.setItem( 'realmQuality', key ); } catch ( e ) {}
+
+    // 1. resolution: new pixel-ratio ceiling, adaptive resolution restarts from 100 % of it
+    PR = Q.pr(); setResStep( 0 );
+
+    // 2. shadows: rebuild the shadow map at the new size / window (the old GPU texture is released, not leaked)
+    const sh = sun.shadow;
+    if ( sh.mapSize.x !== Q.shadowMap )
+    {
+      sh.mapSize.set( Q.shadowMap, Q.shadowMap );
+      if ( sh.map ) { sh.map.dispose(); sh.map = null; }
+      if ( sh.mapPass ) { sh.mapPass.dispose(); sh.mapPass = null; }
+    }
+    const H = Q.shadowHalf; Object.assign( sh.camera, { left: -H, right: H, top: H, bottom: -H } ); sh.camera.updateProjectionMatrix();
+    perf.shadowKey = ''; renderer.shadowMap.needsUpdate = true;
+
+    // 3. anti-aliasing of the HDR target (WebGL2): change samples, dispose so three re-creates the buffers with the new count
+    if ( isGL2 && 'samples' in rt ) [ ...new Set( [ rt, composer.renderTarget1, composer.renderTarget2 ] ) ].forEach( t => { if ( t && t.samples !== Q.msaa ) { t.samples = Q.msaa; t.dispose(); } } );
+
+    // 4. draw distance: camera far plane (the sky dome ignores it); fog density + grass / stone distance are read from Q every frame
+    camera.far = Q.far; camera.updateProjectionMatrix();
+    updateMeadow();
+
+    // 5. depth-of-field is skipped in Low by loop.js (Q.dof); adaptive resolution follows the preset
+    perf.adaptive = Q.adaptive; perf.lock = 0; savePerf(); syncPerfUI();
+    syncQualityUI();
+  }
+  if ( $( 'qualSeg' ).addEventListener ) $( 'qualSeg' ).addEventListener( 'click', ev => { const b = ev.target.closest( 'button' ); if ( b && b.dataset.q !== Q.key ) applyQuality( b.dataset.q ); } );
+  if ( $( 'qualBtn' ).addEventListener ) $( 'qualBtn' ).addEventListener( 'click', () => applyQuality( Q.key === 'low' ? 'mid' : 'low' ) );
+  syncQualityUI();
+
+  /* ---- Touch behaviour (both qualities) ---- */
+  // iOS Safari ignores touch-action for pinch: block its page-zoom gesture events (OrbitControls pinch uses touch events, unaffected)
+  [ 'gesturestart', 'gesturechange', 'gestureend' ].forEach( ev => document.addEventListener( ev, e => e.preventDefault(), { passive: false } ) );
+  if ( !DEV ) canvas.addEventListener( 'contextmenu', e => e.preventDefault() );      // no long-press callout over the 3D view
 } )();

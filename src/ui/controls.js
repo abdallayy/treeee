@@ -63,10 +63,11 @@
     } );
   }
 
+  let _rszRaf = 0, _lastW = 0, _lastH = 0;
   function applyPR ( pr )      // (re)size canvas + post-processing for a pixel ratio
   {
     curPR = pr;
-    const w = window.innerWidth, h = window.innerHeight;
+    const w = window.innerWidth, h = window.innerHeight; _lastW = w; _lastH = h;
     renderer.setPixelRatio( pr );
     renderer.setSize( w, h, false );
     composer.setPixelRatio( pr );
@@ -77,7 +78,9 @@
     pointSystems.forEach( s => { s.u.uScale.value = scale; } );
   }
   function resize () { applyPR( curPR ); }
-  window.addEventListener( 'resize', resize );
+  // phones fire many 'resize' events while the URL bar slides: coalesce to one per frame and skip when the size did not change
+  // (every applyPR reallocates the HDR render targets)
+  window.addEventListener( 'resize', () => { if ( _rszRaf ) return; _rszRaf = requestAnimationFrame( () => { _rszRaf = 0; if ( window.innerWidth !== _lastW || window.innerHeight !== _lastH ) applyPR( curPR ); } ); } );
   resize();
 
   // Depth pre-pass for the bokeh must ignore sky + particles (they'd pollute the depth buffer)

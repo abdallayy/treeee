@@ -61,8 +61,13 @@
     for ( const c of meadow )
     {
       const d = Math.hypot( c.x - cp.x, c.z - cp.z ); _sp.center.set( c.x, c.y + 15, c.z );
-      const vis = d < 430 && _fr.intersectsSphere( _sp ), f = d < 140 ? 1 : d < 280 ? 0.5 : 0.22;
+      const vis = d < Q.grassDist && _fr.intersectsSphere( _sp ), f = d < Q.grassDist * 0.33 ? 1 : d < Q.grassDist * 0.65 ? 0.5 : 0.22;
       c.gm.visible = vis && c.n > 0; c.fm.visible = vis && c.nf > 0;
       if ( vis ) { c.gm.count = Math.ceil( c.n * f ); c.fm.count = Math.ceil( c.nf * f ); }
+    }
+    for ( const s of stoneChunks )      // stones: same per-chunk frustum + distance culling
+    {
+      const d = Math.hypot( s.x - cp.x, s.z - cp.z ); _sp.center.set( s.x, 30, s.z ); _sp.radius = s.r;
+      s.im.visible = d - s.r < Q.grassDist * 1.8 && _fr.intersectsSphere( _sp ); _sp.radius = 110;
     }
   }

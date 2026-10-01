@@ -30,7 +30,7 @@
   let fpsT = 0, fpsN = 0;
 
   /* ---- Performance: frame-rate target, adaptive resolution, throttled shadows ---- */
-  const perf = { fps: 60, adaptive: isMobile, lastT: 0, rafT: 0, minRaf: 1000 / 30, shadowT: 0, shadowKey: '', ft: 0, ftN: 0, okT: 0, lock: 0, scale: 1, cool: 0 };
+  const perf = { fps: 60, adaptive: Q.adaptive, lastT: 0, rafT: 0, minRaf: 1000 / 30, shadowT: 0, shadowKey: '', ft: 0, ftN: 0, okT: 0, lock: 0, scale: 1, cool: 0 };
   try { const sv = JSON.parse( localStorage.getItem( 'realmPerf' ) || '{}' ); if ( sv.fps >= 10 && sv.fps <= 500 ) perf.fps = sv.fps; if ( sv.fps === 0 ) perf.fps = 0; if ( typeof sv.adaptive === 'boolean' ) perf.adaptive = sv.adaptive; } catch ( e ) {}
   const RES_STEPS = [ 1, 0.88, 0.77, 0.67 ];      // adaptive resolution never goes below 67 % and only drops while the target FPS is being missed
   let resStep = 0;
@@ -101,7 +101,7 @@
     // depth of field: autofocus on the orbit target. The pass re-renders the whole scene for depth, so it is skipped
     // while its biggest possible blur is under ~0.75 px of the render buffer (invisible) - raise the slider and it comes back.
     const maxBlurPx = 0.007 * state.dof * renderer.domElement.width;
-    bokeh.enabled = state.dof > 0.01 && ( DEV || maxBlurPx >= 0.75 );
+    bokeh.enabled = state.dof > 0.01 && ( DEV || ( Q.dof && maxBlurPx >= 0.75 ) );      // Low: the extra depth pass is never run
     if ( bokeh.enabled )
     {
       bokeh.uniforms[ 'focus' ].value = camera.position.distanceTo( controls.target );
@@ -113,7 +113,7 @@
     if ( !DEV )
     {
       const key = shadowCenter.x + ',' + shadowCenter.z + ',' + state.hour.toFixed( 3 ) + ',' + state.shadows + ',' + state.weather;
-      if ( key !== perf.shadowKey || now0 - perf.shadowT >= 30 ) { perf.shadowKey = key; perf.shadowT = now0; renderer.shadowMap.needsUpdate = true; }
+      if ( key !== perf.shadowKey || now0 - perf.shadowT >= Q.shadowMs ) { perf.shadowKey = key; perf.shadowT = now0; renderer.shadowMap.needsUpdate = true; }
     }
 
     composer.render( dt );

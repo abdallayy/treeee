@@ -29,3 +29,8 @@ Add a new file: create it, then list it in `src/manifest.json` at the right posi
 - `main/loop.js` - FPS cap (30/60/90/120/Max/custom, saved in localStorage), adaptive resolution (only drops sharpness while the chosen FPS is missed),
   shadow map refreshed ~30 Hz, depth-of-field pass skipped while its blur is under 0.75 px, grass culling + labels only when the camera moves.
 - `render/wind.js` - `uClearN`: the grass shader only loops over the clear-zones that exist (was always 32 iterations per vertex).
+
+## Graphics quality (Low / Mid)
+`render/quality.js` holds the two presets (`QUALITY.low`, `QUALITY.mid`) and the live binding `Q`; `ui/quality-ui.js` switches them at runtime
+(pixel ratio, shadow map + window, MSAA, camera far, adaptive resolution). Fog density, grass / stone distance, shadow refresh rate and the
+depth-of-field pass read `Q` every frame. The choice is saved in `localStorage.realmQuality` (default `mid`).

@@ -3,8 +3,7 @@
    * ===================================================================== */
   const canvas = document.getElementById( 'c' );
   const renderer = new T.WebGLRenderer( { canvas, antialias: false, stencil: false, powerPreference: 'high-performance' } );
-  const isMobile = /Android|iPhone|iPad|Mobi/i.test( navigator.userAgent );
-  const PR = Math.min( window.devicePixelRatio || 1, isMobile ? 1.5 : 2 );
+  let PR = Q.pr();      // max pixel ratio of the active quality preset (adaptive resolution may go lower, never higher)
   let curPR = PR;      // live pixel ratio (adaptive resolution may lower it temporarily, never above PR)
   renderer.setPixelRatio( PR );
   renderer.setSize( window.innerWidth, window.innerHeight, false );
@@ -14,7 +13,7 @@
 
   const scene = new T.Scene();
   scene.fog = new T.FogExp2( 0xb9d6ee, 0.0013 );
-  const camera = new T.PerspectiveCamera( 38, window.innerWidth / window.innerHeight, 0.5, 6000 );
+  const camera = new T.PerspectiveCamera( 38, window.innerWidth / window.innerHeight, 0.5, Q.far );
   camera.position.set( 150, 125, 140 );
   const controls = new T.OrbitControls( camera, canvas );
   controls.target.set( 0, 4, -6 );
@@ -28,7 +27,7 @@
   const isGL2 = renderer.capabilities.isWebGL2;
   const RTClass = isGL2 && T.WebGLMultisampleRenderTarget ? T.WebGLMultisampleRenderTarget : T.WebGLRenderTarget;
   const rt = new RTClass( window.innerWidth * PR, window.innerHeight * PR, { type: T.HalfFloatType, format: T.RGBAFormat, minFilter: T.LinearFilter, magFilter: T.LinearFilter } );
-  if ( isGL2 && 'samples' in rt ) rt.samples = 4;
+  if ( isGL2 && 'samples' in rt ) rt.samples = Q.msaa;
   const composer = new T.EffectComposer( renderer, rt );
   composer.setPixelRatio( PR );
   composer.setSize( window.innerWidth, window.innerHeight );
@@ -92,8 +91,8 @@
   scene.add( hemi );
   const sun = new T.DirectionalLight( 0xfff0dd, 3 );
   sun.castShadow = true;
-  sun.shadow.mapSize.set( isMobile ? 2048 : 4096, isMobile ? 2048 : 4096 );
-  const SH = 230;
+  sun.shadow.mapSize.set( Q.shadowMap, Q.shadowMap );
+  const SH = Q.shadowHalf;
   Object.assign( sun.shadow.camera, { left: -SH, right: SH, top: SH, bottom: -SH, near: 10, far: 1400 } );
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.5; sun.shadow.radius = 2.5;
   const shadowCenter = new T.Vector3( 0, 0, -5 );

@@ -13,6 +13,7 @@
   "render/wind.js",
   "render/particles.js",
   "render/app-state.js",
+  "render/quality.js",
   "render/renderer-scene.js",
   "scene/terrain.js",
   "scene/trees.js",
@@ -53,6 +54,7 @@
   "editor/input.js",
   "#dev-end",
   "interaction/pointer.js",
-  "main/loop.js"
+  "main/loop.js",
+  "ui/quality-ui.js"
  ]
 }
