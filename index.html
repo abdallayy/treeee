@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Two Realms – Castle &amp; Forest Village</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet">
+    <style>
+      :root {
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        --page: #0d1512;
+        --panel: rgba(247, 248, 243, .80);
+        --ink: #17221c;
+        --muted: #5a6a60;
+        --line: rgba(23, 34, 28, .14);
+        --accent: #2f7d4a;
+        --accent-ink: #ffffff;
+        --track: rgba(23, 34, 28, .16);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --panel: rgba(16, 23, 20, .74);
+          --ink: #e9f0ea;
+          --muted: #9bb0a3;
+          --line: rgba(233, 240, 234, .16);
+          --accent: #7fd19a;
+          --accent-ink: #0d1512;
+          --track: rgba(233, 240, 234, .22);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --panel: rgba(16, 23, 20, .74);
+        --ink: #e9f0ea;
+        --muted: #9bb0a3;
+        --line: rgba(233, 240, 234, .16);
+        --accent: #7fd19a;
+        --accent-ink: #0d1512;
+        --track: rgba(233, 240, 234, .22);
+      }
+
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        background: var(--page);
+        overflow: hidden;
+        font-family: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #c {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        touch-action: none;
+      }
+
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--page);
+        color: #dfeae2;
+        z-index: 20;
+        font-size: 15px;
+        letter-spacing: .01em;
+        transition: opacity .8s ease;
+      }
+
+      #loading.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #loading span {
+        display: block;
+        text-align: center;
+        line-height: 1.6;
+      }
+
+      #loading small {
+        color: #8ea396;
+      }
+
+      #panel {
+        position: fixed;
+        left: max(12px, env(safe-area-inset-left, 0px));
+        top: calc(12px + env(safe-area-inset-top, 0px));
+        width: 292px;
+        max-width: calc(100vw - 24px);
+        max-height: calc(100% - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        overflow: auto;
+        background: var(--panel);
+        backdrop-filter: blur(14px) saturate(1.2);
+        -webkit-backdrop-filter: blur(14px) saturate(1.2);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px 16px 12px;
+        z-index: 10;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+      }
+
+      #panel.collapsed .body {
+        display: none;
+      }
+
+      .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      h1 {
+        font-size: 17px;
+        line-height: 1.2;
+        margin: 0;
+        font-weight: 700;
+        letter-spacing: -.01em;
+      }
+
+      #collapse {
+        all: unset;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--muted);
+        padding: 4px 8px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+      }
+
+      #collapse:focus-visible,
+      .seg button:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .sub {
+        margin: 4px 0 0;
+        font-size: 12.5px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      h2 {
+        font-size: 13px;
+        margin: 16px 0 6px;
+        font-weight: 700;
+        color: var(--ink);
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 86px 1fr 42px;
+        align-items: center;
+        gap: 8px;
+        margin: 7px 0;
+        font-size: 13px;
+      }
+
+      .row label {
+        color: var(--muted);
+      }
+
+      .row output {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        font-size: 12px;
+        color: var(--ink);
+      }
+
+      input[type=range] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+        border-radius: 4px;
+        background: var(--track);
+        margin: 0;
+      }
+
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 2px solid var(--panel);
+        box-shadow: 0 0 0 1px var(--accent);
+        cursor: pointer;
+      }
+
+      input[type=range]::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 2px solid var(--panel);
+        cursor: pointer;
+      }
+
+      .seg {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 8px 0;
+      }
+
+      .seg button {
+        all: unset;
+        cursor: pointer;
+        text-align: center;
+        padding: 7px 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .seg button+button {
+        border-left: 1px solid var(--line);
+      }
+
+      .seg button.on {
+        background: var(--accent);
+        color: var(--accent-ink);
+        font-weight: 500;
+      }
+
+      .checks {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 10px;
+        margin-top: 10px;
+        font-size: 13px;
+      }
+
+      .checks label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .checks input {
+        accent-color: var(--accent);
+        width: 15px;
+        height: 15px;
+        margin: 0;
+      }
+
+      .compass {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        position: relative;
+        vertical-align: -2px;
+        margin-left: 4px;
+      }
+
+      .compass i {
+        position: absolute;
+        left: 6px;
+        top: 0;
+        width: 2px;
+        height: 14px;
+        background: var(--accent);
+        border-radius: 2px;
+        transform-origin: 50% 50%;
+      }
+
+      .compass i::after {
+        content: "";
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        border: 4px solid transparent;
+        border-bottom: 6px solid var(--accent);
+        border-top: 0;
+      }
+
+      .hint {
+        margin: 12px 0 0;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      #hud {
+        position: fixed;
+        right: max(12px, env(safe-area-inset-right, 0px));
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        font-size: 12px;
+        color: #e6efe8;
+        background: rgba(10, 16, 13, .5);
+        padding: 4px 9px;
+        border-radius: 8px;
+        z-index: 10;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .label {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 5;
+        pointer-events: none;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        background: rgba(10, 16, 13, .55);
+        padding: 3px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+        transform: translate(-50%, -50%);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        will-change: transform;
+      }
+
+      @media (max-width:560px) {
+        #panel {
+          width: auto;
+          right: 12px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #loading {
+          transition: none;
+        }
+      }
+
+      .seg.s4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      #plant {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        width: min(380px, calc(100vw - 24px));
+        box-sizing: border-box;
+        z-index: 10;
+        background: var(--panel);
+        backdrop-filter: blur(14px) saturate(1.2);
+        -webkit-backdrop-filter: blur(14px) saturate(1.2);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px 14px 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+        font-size: 12.5px;
+      }
+
+      #plant .pl-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        color: var(--muted);
+      }
+
+      #plTime {
+        font-size: 20px;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: .02em;
+      }
+
+      #plant.ready #plTime {
+        color: var(--accent);
+      }
+
+      .pl-bar {
+        height: 4px;
+        border-radius: 4px;
+        background: var(--track);
+        margin: 6px 0 2px;
+        overflow: hidden;
+      }
+
+      .pl-bar i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--accent);
+        transition: width .25s linear;
+      }
+
+      .pl-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 11.5px;
+      }
+
+      .pl-foot label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .pl-foot input {
+        accent-color: var(--accent);
+        margin: 0;
+      }
+
+      .study-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 7px 0;
+      }
+
+      #studyToggle {
+        all: unset;
+        box-sizing: border-box;
+        min-height: 32px;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--accent);
+        color: var(--accent-ink);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: center;
+        transition: background-color .2s ease, color .2s ease;
+      }
+
+      #studyToggle:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .study-balance {
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+
+      #goalText {
+        font-size: 11px;
+      }
+
+      @media (max-width:560px) {
+        #plant {
+          bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+        }
+      }
+    </style>
+  </head>
+
+  <body data-dev-mode="false">
+    <canvas id="c"></canvas>
+
+    <div id="loading"><span>Growing the grove…<br><small>Generating terrain, four tree species, grass and
+          stones</small></span></div>
+
+    <div id="panel">
+      <div class="head">
+        <h1>Realm Atlas</h1>
+        <button id="collapse" aria-expanded="true">Hide</button>
+      </div>
+      <p class="sub">A castle kingdom, riverside towns, mills, farms and oak treehouses across vast forests.</p>
+      <div class="body">
+        <h2>Wind <span class="compass" aria-hidden="true"><i id="compassNeedle"></i></span></h2>
+        <div class="row"><label for="wSpeed">Speed</label><input id="wSpeed" type="range" min="0" max="25" step="0.5"
+            value="7"><output id="oSpeed">7 m/s</output></div>
+        <div class="row"><label for="wDir">Direction</label><input id="wDir" type="range" min="0" max="360" step="1"
+            value="35"><output id="oDir">35°</output></div>
+        <div class="row"><label for="wGust">Gusts</label><input id="wGust" type="range" min="0" max="1" step="0.05"
+            value="0.7"><output id="oGust">0.7</output></div>
+
+        <h2>Viewpoints</h2>
+        <div class="seg" id="viewSeg" role="group" aria-label="Viewpoints"><button data-v="all">Overview</button><button
+            data-v="castle">Castle</button><button data-v="bridge">River</button><button
+            data-v="forest">Treehouses</button><button data-v="mill">Windmill</button><button
+            data-v="farm">Farms</button></div>
+
+        <h2>Sky and weather</h2>
+        <div class="row"><label for="tHour">Time of day</label><input id="tHour" type="range" min="0" max="24"
+            step="0.05" value="16.5"><output id="oHour">16:30</output></div>
+        <div class="seg" id="weatherSeg" role="group" aria-label="Weather">
+          <button data-w="clear" class="on">Clear</button><button data-w="rain">Rain</button><button
+            data-w="mist">Mist</button>
+        </div>
+        <div class="checks">
+          <label><input type="checkbox" id="cLapse"> Time-lapse</label>
+          <label><input type="checkbox" id="cPetals" checked> Petals</label>
+        </div>
+
+        <h2>Camera and render</h2>
+        <div class="row"><label for="rDof">Depth of field</label><input id="rDof" type="range" min="0" max="1"
+            step="0.05" value="0.12"><output id="oDof">0.12</output></div>
+        <div class="row"><label for="rExp">Exposure</label><input id="rExp" type="range" min="0.5" max="2" step="0.05"
+            value="1.1"><output id="oExp">1.10</output></div>
+        <div class="checks">
+          <label><input type="checkbox" id="cOrbit"> Auto-orbit</label>
+          <label><input type="checkbox" id="cLabels" checked> Labels</label>
+          <label><input type="checkbox" id="cShadow" checked> Shadows</label>
+        </div>
+        <h2>Performance</h2>
+        <div class="seg" id="fpsSeg" style="grid-template-columns:repeat(5,1fr)" role="group" aria-label="Frame rate limit"><button data-f="30">30</button><button data-f="60">60</button><button data-f="90">90</button><button data-f="120">120</button><button data-f="0">Max</button></div>
+        <div class="row"><label for="fpsInput">Custom FPS</label><input id="fpsInput" type="number" min="10" max="500" step="1" value="60" inputmode="numeric" style="width:100%;box-sizing:border-box;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);font:inherit"><output>fps</output></div>
+        <div class="checks">
+          <label><input type="checkbox" id="cAdaptive"> Adaptive resolution</label>
+        </div>
+        <p class="hint">Frame-rate cap: the screen's refresh rate is the upper limit (a 60 Hz screen can't show more than 60). "Max" = as fast as the screen allows. Adaptive resolution only lowers sharpness briefly if the device can't hold the chosen FPS, then returns to full quality.</p>
+        <p class="hint">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Focus follows the orbit target. Study
+          for 4 hours to earn a point, then click or tap the ground to plant a tree for 1 point.</p>
+      </div>
+    </div>
+    <div id="hud">– fps</div>
+    <div id="plant" role="region" aria-label="Study timer and tree planting">
+      <div class="pl-top"><span id="plLabel">Study time toward next point</span><b id="plTime">00:00:00</b></div>
+      <div class="pl-bar" role="progressbar" aria-label="Progress toward next planting point" aria-valuemin="0"
+        aria-valuemax="100" aria-valuenow="0"><i id="plBar"></i></div>
+      <div class="study-controls"><span class="study-balance"><b id="pointsStat">0</b> planting points</span><button
+          id="studyToggle" type="button" aria-pressed="false">Start Studying</button></div>
+      <div class="seg s4" id="speciesSeg" role="group" aria-label="Tree species"><button data-s="oak"
+          class="on">Oak</button><button data-s="pine">Pine</button><button data-s="sakura">Sakura</button><button
+          data-s="fantasy">Fantasy</button></div>
+      <div class="pl-foot"><span id="plMsg">Study for 4 hours to earn a planting point</span></div>
+      <div class="pl-foot"><span id="goalText">1 planting point every 4 hours</span></div>
+    </div>
+
+    <!-- Three.js r128 (UMD builds) + post-processing helpers. Only jsDelivr /npm/ is used. -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/BokehShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/BokehPass.js"></script>
+
+    <script src="map-data.js"></script>
+    <script src="index.js"></script>
+    <script src="world-3d.js"></script>
+  </body>
+
+</html>

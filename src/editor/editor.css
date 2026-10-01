@@ -1,0 +1,270 @@
+/* Developer editor UI (injected by src/loader.js). Edit freely - no build step. */
+/* ===== Dev editor UI v2 (overrides) ===== */
+      :root {
+        --rx-bg: rgba(13, 21, 17, .90);
+        --rx-line: rgba(255, 255, 255, .12);
+        --rx-ink: #eef5ef;
+        --rx-mut: #9fb3a6;
+        --rx-acc: #6cf2c2;
+        --rx-gold: #ffd66b;
+        --rx-red: #ff8f80;
+      }
+
+      #devToolbar,
+      #devChip,
+      #devToast,
+      #devBar,
+      #devCtx,
+      #devLibrary,
+      .dev-modal-card {
+        background: var(--rx-bg) !important;
+        border: 1px solid var(--rx-line) !important;
+        backdrop-filter: blur(18px) saturate(1.3);
+        -webkit-backdrop-filter: blur(18px) saturate(1.3);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, .42);
+        color: var(--rx-ink);
+      }
+
+      #devToolbar {
+        top: calc(12px + env(safe-area-inset-top, 0px));
+        right: 12px;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 14px;
+      }
+
+      #devToolbar button {
+        min-height: 34px;
+        min-width: 34px;
+        padding: 0 12px;
+        border-radius: 9px;
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+        font-size: 14px;
+        transition: background .15s, transform .1s, opacity .15s;
+      }
+
+      #devToolbar button:hover:not(:disabled) {
+        background: rgba(108, 242, 194, .16);
+      }
+
+      #devToolbar button:active:not(:disabled) {
+        transform: scale(.94);
+      }
+
+      #devToolbar button:disabled {
+        opacity: .3;
+      }
+
+      #devToolbar #devOpen {
+        background: var(--rx-acc);
+        color: #0b1a13;
+        font-weight: 700;
+      }
+
+      .dev-tip {
+        background: none;
+        padding: 0 8px;
+        color: var(--rx-mut);
+        backdrop-filter: none;
+      }
+
+      #devHoverTip {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 50;
+        pointer-events: none;
+        padding: 5px 11px;
+        border-radius: 999px;
+        font: 600 12px "Schibsted Grotesk", system-ui, sans-serif;
+        color: #0b1a13;
+        background: var(--rx-gold);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .4);
+        white-space: nowrap;
+      }
+
+      #devChip {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 45;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 13px;
+        font: 600 13px "Schibsted Grotesk", system-ui, sans-serif;
+        transition: opacity .15s;
+      }
+
+      #devChip b {
+        padding: 0 8px;
+      }
+
+      #devChip button {
+        font: inherit;
+        color: var(--rx-ink);
+        background: rgba(255, 255, 255, .07);
+        border: 1px solid var(--rx-line);
+        border-radius: 9px;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: background .15s, transform .1s;
+      }
+
+      #devChip button:hover {
+        background: rgba(108, 242, 194, .18);
+      }
+
+      #devChip button.danger:hover {
+        background: rgba(255, 143, 128, .2);
+        color: var(--rx-red);
+      }
+
+      #devChip button:active {
+        transform: scale(.95);
+      }
+
+      #devChip[hidden],
+      #devHoverTip[hidden] {
+        display: none !important;
+      }
+
+      kbd {
+        font: 600 10px ui-monospace, monospace;
+        padding: 1px 5px;
+        margin-left: 4px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, .12);
+        color: var(--rx-mut);
+      }
+
+      #devCtx {
+        border-radius: 14px;
+        padding: 6px;
+        min-width: 190px;
+        animation: rxpop .14s ease-out;
+      }
+
+      #devCtx button {
+        border-radius: 9px;
+        transition: background .12s;
+      }
+
+      #devToast {
+        position: fixed;
+        left: 50%;
+        top: calc(72px + env(safe-area-inset-top, 0px));
+        bottom: auto;
+        transform: translateX(-50%);
+        z-index: 80;
+        box-sizing: border-box;
+        width: max-content;
+        max-width: min(360px, calc(100vw - 24px));
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 9px 12px 9px 16px;
+        border-radius: 10px;
+        font: 600 13px "Schibsted Grotesk", system-ui, sans-serif;
+        line-height: 1.4;
+        text-align: center;
+        animation: rxpop .18s ease-out;
+      }
+
+      #devToast button {
+        font: inherit;
+        color: #0b1a13;
+        background: var(--rx-acc);
+        border: 0;
+        border-radius: 999px;
+        padding: 5px 12px;
+        cursor: pointer;
+      }
+
+      #devBar {
+        border-radius: 18px;
+        animation: rxup .2s ease-out;
+      }
+
+      .dev-modal-card {
+        border-radius: 20px;
+        animation: rxpop .18s ease-out;
+      }
+
+      .dev-item {
+        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+      }
+
+      .dev-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 30px rgba(0, 0, 0, .45);
+        border-color: var(--rx-acc);
+      }
+
+      .dev-existing-row {
+        transition: background .12s;
+        border-radius: 10px;
+      }
+
+      .dev-existing-row:hover {
+        background: rgba(108, 242, 194, .09);
+      }
+
+      #devLibrary {
+        border-radius: 18px 0 0 18px;
+      }
+
+      #devBar input[type=range],
+      #devLibrary input[type=search],
+      .dev-modal input[type=search] {
+        accent-color: var(--rx-acc);
+      }
+
+      @keyframes rxpop {
+        from {
+          opacity: 0;
+          transform: scale(.94);
+        }
+      }
+
+      @keyframes rxup {
+        from {
+          opacity: 0;
+          translate: 0 14px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+
+        #devCtx,
+        #devToast,
+        #devBar,
+        .dev-modal-card,
+        .dev-item {
+          animation: none;
+          transition: none;
+        }
+      }
+      #devCtx button kbd { margin-left: auto; }
+
+      /* ===== multi-select ===== */
+      #devMarquee { position: fixed; left: 0; top: 0; z-index: 44; pointer-events: none; border: 1.5px dashed var(--rx-acc, #6cf2c2); background: rgba(108, 242, 194, .13); border-radius: 3px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25); }
+      #devMarquee[hidden], #devGroupBar[hidden] { display: none !important; }
+      #devToolbar #devSelect[aria-pressed="true"] { background: var(--rx-gold, #ffd66b); color: #0b1a13; font-weight: 700; }
+      #devGroupBar { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px; max-width: calc(100vw - 24px); border-radius: 16px; background: var(--rx-bg, rgba(13, 21, 17, .9)); border: 1px solid var(--rx-line, rgba(255, 255, 255, .12)); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 18px 48px rgba(0, 0, 0, .42); color: var(--rx-ink, #eef5ef); font: 600 13px "Schibsted Grotesk", system-ui, sans-serif; animation: rxup .2s ease-out; }
+      #devGroupBar .dev-gb-hint { color: var(--rx-mut, #9fb3a6); font-weight: 500; }
+      #devGroupBar button { font: inherit; color: inherit; background: rgba(255, 255, 255, .08); border: 1px solid var(--rx-line, rgba(255, 255, 255, .12)); border-radius: 10px; padding: 7px 13px; cursor: pointer; transition: background .15s, transform .1s; }
+      #devGroupBar button:hover { background: rgba(108, 242, 194, .18); }
+      #devGroupBar button.primary { background: var(--rx-acc, #6cf2c2); color: #0b1a13; border-color: transparent; }
+      #devGroupBar button:active { transform: scale(.95); }
+      @media (max-width: 720px) { #devGroupBar .dev-gb-hint { display: none; } }
+
+      #devMarquee::after { content: attr(data-n); position: absolute; right: -2px; top: -26px; padding: 3px 9px; border-radius: 999px; background: #6cf2c2; color: #0b1a13; font: 700 11px system-ui, sans-serif; white-space: nowrap; }
+      #devGroupBar { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; }
+      #devGroupBar #devGroupRot { padding: 7px 11px; font-size: 15px; }
+      #devChip[hidden] { display: none !important; }
